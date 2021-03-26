@@ -228,6 +228,12 @@ fi
 # xcode configuration
 export DEBUG_INFORMATION_FORMAT=dwarf-with-dsym
 
+if [ "$ARCH" = "arm64" ]; then
+    AS="gas-preprocessor.pl -arch aarch64 -- $FF_XCRUN_CC"
+else
+    AS="gas-preprocessor.pl -- $FF_XCRUN_CC"
+fi
+
 cd $FF_BUILD_SOURCE
 if [ -f "./config.h" ]; then
     echo 'reuse configure'
@@ -236,6 +242,7 @@ else
     ./configure \
         $FFMPEG_CFG_FLAGS \
         --cc="$FF_XCRUN_CC" \
+        --as="$AS" \
         $FFMPEG_CFG_CPU \
         --extra-cflags="$FFMPEG_CFLAGS" \
         --extra-cxxflags="$FFMPEG_CFLAGS" \
