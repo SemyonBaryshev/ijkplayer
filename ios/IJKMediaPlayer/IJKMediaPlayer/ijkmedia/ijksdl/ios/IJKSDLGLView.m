@@ -37,6 +37,8 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
 @interface IJKSDLGLView()
 @property(atomic,strong) NSRecursiveLock *glActiveLock;
 @property(atomic) BOOL glActivePaused;
+@property(nonatomic, weak) CALayer *weakLayer;
+@property(nonatomic, assign) UIApplicationState appState;
 @end
 
 @implementation IJKSDLGLView {
@@ -47,7 +49,7 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
     GLint           _backingHeight;
 
     int             _frameCount;
-    
+
     int64_t         _lastFrameTime;
 
     IJK_GLES2_Renderer *_renderer;
@@ -63,6 +65,7 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
     NSMutableArray *_registeredNotifications;
 
     IJKSDLGLViewApplicationState _applicationState;
+    UIViewContentMode _mode;
 }
 
 @synthesize isThirdGLView              = _isThirdGLView;
@@ -85,7 +88,8 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
         [self registerApplicationObservers];
 
         _didSetupGL = NO;
-        if ([self isApplicationActive] == YES)
+        self.weakLayer = self.layer;
+        if ([self isApplicationActive])
             [self setupGLOnce];
     }
 
@@ -120,7 +124,7 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
     glGenRenderbuffers(1, &_renderbuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, _renderbuffer);
-    [_context renderbufferStorage:GL_RENDERBUFFER fromDrawable:(CAEAGLLayer*)self.layer];
+    [_context renderbufferStorage:GL_RENDERBUFFER fromDrawable:(CAEAGLLayer*)self.weakLayer];
     glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &_backingWidth);
     glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &_backingHeight);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _renderbuffer);
@@ -142,7 +146,7 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
 
 - (CAEAGLLayer *)eaglLayer
 {
-    return (CAEAGLLayer*) self.layer;
+    return (CAEAGLLayer*) self.weakLayer;
 }
 
 - (BOOL)setupGL
@@ -150,7 +154,7 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
     if (_didSetupGL)
         return YES;
 
-    CAEAGLLayer *eaglLayer = (CAEAGLLayer*) self.layer;
+    CAEAGLLayer *eaglLayer = (CAEAGLLayer*) self.weakLayer;
     eaglLayer.opaque = YES;
     eaglLayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:
                                     [NSNumber numberWithBool:NO], kEAGLDrawablePropertyRetainedBacking,
@@ -203,8 +207,7 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
         case IJKSDLGLViewApplicationBackgroundState:
             return NO;
         default: {
-            UIApplicationState appState = [UIApplication sharedApplication].applicationState;
-            switch (appState) {
+            switch (self.appState) {
                 case UIApplicationStateActive:
                     return YES;
                 case UIApplicationStateInactive:
@@ -224,7 +227,7 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
 
     EAGLContext *prevContext = [EAGLContext currentContext];
     [EAGLContext setCurrentContext:_context];
-    
+
     IJK_GLES2_Renderer_reset(_renderer);
     IJK_GLES2_Renderer_freeP(&_renderer);
 
@@ -267,6 +270,7 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
 - (void)setContentMode:(UIViewContentMode)contentMode
 {
     [super setContentMode:contentMode];
+    _mode = contentMode;
 
     switch (contentMode) {
         case UIViewContentModeScaleToFill:
@@ -316,14 +320,7 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
 
     _isRenderBufferInvalidated = YES;
 
-    if ([[NSThread currentThread] isMainThread]) {
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
-            if (_isRenderBufferInvalidated)
-                [self display:nil];
-        });
-    } else {
-        [self display:nil];
-    }
+    [self display:nil];
 
     [self unlockGLActive];
 }
@@ -378,7 +375,7 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
         _isRenderBufferInvalidated = NO;
 
         glBindRenderbuffer(GL_RENDERBUFFER, _renderbuffer);
-        [_context renderbufferStorage:GL_RENDERBUFFER fromDrawable:(CAEAGLLayer*)self.layer];
+        [_context renderbufferStorage:GL_RENDERBUFFER fromDrawable:(CAEAGLLayer*)self.weakLayer];
         glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &_backingWidth);
         glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &_backingHeight);
         IJK_GLES2_Renderer_setGravity(_renderer, _rendererGravity, _backingWidth, _backingHeight);
@@ -435,7 +432,7 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
         [self.glActiveLock unlock];
         return NO;
     }
-    
+
     return YES;
 }
 
@@ -499,7 +496,8 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
 
 - (void)applicationWillEnterForeground
 {
-    NSLog(@"IJKSDLGLView:applicationWillEnterForeground: %d", (int)[UIApplication sharedApplication].applicationState);
+    self.appState = UIApplicationStateActive;
+    NSLog(@"IJKSDLGLView:applicationWillEnterForeground: %d", (int) self.appState);
     [self setupGLOnce];
     _applicationState = IJKSDLGLViewApplicationForegroundState;
     [self toggleGLPaused:NO];
@@ -507,29 +505,33 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
 
 - (void)applicationDidBecomeActive
 {
-    NSLog(@"IJKSDLGLView:applicationDidBecomeActive: %d", (int)[UIApplication sharedApplication].applicationState);
+    self.appState = UIApplicationStateActive;
+    NSLog(@"IJKSDLGLView:applicationDidBecomeActive: %d", (int) self.appState);
     [self setupGLOnce];
     [self toggleGLPaused:NO];
 }
 
 - (void)applicationWillResignActive
 {
-    NSLog(@"IJKSDLGLView:applicationWillResignActive: %d", (int)[UIApplication sharedApplication].applicationState);
+    self.appState = UIApplicationStateInactive;
+    NSLog(@"IJKSDLGLView:applicationWillResignActive: %d", (int) self.appState);
     [self toggleGLPaused:YES];
     glFinish();
 }
 
 - (void)applicationDidEnterBackground
 {
-    NSLog(@"IJKSDLGLView:applicationDidEnterBackground: %d", (int)[UIApplication sharedApplication].applicationState);
+    self.appState = UIApplicationStateBackground;
     _applicationState = IJKSDLGLViewApplicationBackgroundState;
+    NSLog(@"IJKSDLGLView:applicationDidEnterBackground: %d", (int) self.appState);
     [self toggleGLPaused:YES];
     glFinish();
 }
 
 - (void)applicationWillTerminate
 {
-    NSLog(@"IJKSDLGLView:applicationWillTerminate: %d", (int)[UIApplication sharedApplication].applicationState);
+    self.appState = UIApplicationStateInactive;
+    NSLog(@"IJKSDLGLView:applicationWillTerminate: %d", (int) self.appState);
     [self toggleGLPaused:YES];
 }
 
@@ -600,9 +602,9 @@ typedef NS_ENUM(NSInteger, IJKSDLGLViewApplicationState) {
     // Create a CGImage with the pixel data
     // If your OpenGL ES content is opaque, use kCGImageAlphaNoneSkipLast to ignore the alpha channel
     // otherwise, use kCGImageAlphaPremultipliedLast
-    CGDataProviderRef ref = CGDataProviderCreateWithData(NULL, data, dataLength, NULL);
+    CGDataProviderRef ref = CGDataProviderCreateWithData(NULL, data, (size_t) dataLength, NULL);
     CGColorSpaceRef colorspace = CGColorSpaceCreateDeviceRGB();
-    CGImageRef iref = CGImageCreate(width, height, 8, 32, width * 4, colorspace, kCGBitmapByteOrder32Big | kCGImageAlphaPremultipliedLast,
+    CGImageRef iref = CGImageCreate((size_t) width, (size_t) height, 8, 32, (size_t) width * 4, colorspace, kCGBitmapByteOrder32Big | kCGImageAlphaPremultipliedLast,
                                     ref, NULL, true, kCGRenderingIntentDefault);
 
     [EAGLContext setCurrentContext:prevContext];

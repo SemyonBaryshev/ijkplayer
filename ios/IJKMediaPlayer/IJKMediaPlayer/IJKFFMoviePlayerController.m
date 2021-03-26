@@ -214,6 +214,8 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
 
         // init video sink
         _glView = [[IJKSDLGLView alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+
+        _glView.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
         _glView.isThirdGLView = NO;
         _view = _glView;
         _hudViewController = [[IJKSDLHudViewController alloc] init];
@@ -221,6 +223,7 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
         _shouldShowHudView = NO;
         _hudViewController.tableView.hidden = YES;
         [_view addSubview:_hudViewController.tableView];
+        self.scalingMode = IJKMPMovieScalingModeAspectFit;
 
         [self setHudValue:nil forKey:@"scheme"];
         [self setHudValue:nil forKey:@"host"];
@@ -234,7 +237,7 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
         [self setHudValue:nil forKey:@"t-preroll"];
         [self setHudValue:nil forKey:@"t-http-open"];
         [self setHudValue:nil forKey:@"t-http-seek"];
-        
+
         self.shouldShowHudView = options.showHudView;
 
         ijkmp_ios_set_glview(_mediaPlayer, _glView);
@@ -296,7 +299,6 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
         // IJKFFIOStatCompleteRegister(IJKFFIOStatCompleteDebugCallback);
 
         // init fields
-        _scalingMode = IJKMPMovieScalingModeAspectFit;
         _shouldAutoplay = YES;
         memset(&_asyncStat, 0, sizeof(_asyncStat));
         memset(&_cacheStat, 0, sizeof(_cacheStat));
@@ -319,11 +321,13 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
         self.shouldShowHudView = options.showHudView;
         glView.isThirdGLView = YES;
         _view = _glView = (IJKSDLGLView *)glView;
+        _glView.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
         _hudViewController = [[IJKSDLHudViewController alloc] init];
         [_hudViewController setRect:_glView.frame];
         _shouldShowHudView = NO;
         _hudViewController.tableView.hidden = YES;
         [_view addSubview:_hudViewController.tableView];
+        self.scalingMode = IJKMPMovieScalingModeAspectFit;
 
         [self setHudValue:nil forKey:@"scheme"];
         [self setHudValue:nil forKey:@"host"];
@@ -1396,7 +1400,7 @@ static int onInjectIOControl(IJKFFMoviePlayerController *mpc, id<IJKMediaUrlOpen
             realData->url[sizeof(realData->url) - 1] = 0;
         }
     }
-    
+
     return 0;
 }
 
