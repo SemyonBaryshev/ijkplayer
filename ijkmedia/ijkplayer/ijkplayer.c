@@ -24,6 +24,7 @@
 #include "ijkplayer.h"
 #include "ijkplayer_internal.h"
 #include "ijkversion.h"
+#include "libavformat/rtsp.h"
 
 #define MP_RET_IF_FAILED(ret) \
     do { \
@@ -545,6 +546,66 @@ int ijkmp_stop(IjkMediaPlayer *mp)
     pthread_mutex_unlock(&mp->mutex);
     MPTRACE("ijkmp_stop()=%d\n", retval);
     return retval;
+}
+
+static void ijkmp_step_to_next_frame_l(IjkMediaPlayer *mp)
+{
+    assert(mp);
+    if (!(mp && mp->ffplayer))
+        return;
+
+    ffp_step_to_next_frame(mp->ffplayer);
+}
+
+void ijkmp_step_to_next_frame(IjkMediaPlayer *mp)
+{
+    assert(mp);
+    MPTRACE("ijkmp_step_to_next_frame()\n");
+    pthread_mutex_lock(&mp->mutex);
+    ijkmp_step_to_next_frame_l(mp);
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("ijkmp_step_to_next_frame()=void\n");
+}
+
+static void ijkmp_step_to_previous_frame_l(IjkMediaPlayer *mp)
+{
+    assert(mp);
+    if (!(mp && mp->ffplayer))
+        return;
+
+    ffp_step_to_previous_frame(mp->ffplayer);
+}
+
+void ijkmp_step_to_previous_frame(IjkMediaPlayer *mp)
+{
+    assert(mp);
+    MPTRACE("ijkmp_step_to_previous_frame()\n");
+    pthread_mutex_lock(&mp->mutex);
+    ijkmp_step_to_previous_frame_l(mp);
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("ijkmp_step_to_previous_frame()=void\n");
+}
+
+static void ijkmp_rtsp_send_play_command_l(IjkMediaPlayer *mp, const char *headers)
+{
+    assert(mp);
+    if (!(mp && mp->ffplayer && mp->ffplayer->is && mp->ffplayer->is->ic && mp->ffplayer->is->ic->priv_data))
+        return;
+
+    AVFormatContext *av = mp->ffplayer->is->ic;
+    RTSPState *rt = av->priv_data;
+    const char *c_path = rt->control_uri;
+    ff_rtsp_send_cmd_async(av, "PLAY", c_path, headers);
+}
+
+void ijkmp_rtsp_send_play_command(IjkMediaPlayer *mp, const char *headers)
+{
+    assert(mp);
+    MPTRACE("ijkmp_rtsp_send_play_command()\n");
+    pthread_mutex_lock(&mp->mutex);
+    ijkmp_rtsp_send_play_command_l(mp, headers);
+    pthread_mutex_unlock(&mp->mutex);
+    MPTRACE("ijkmp_rtsp_send_play_command()=void\n");
 }
 
 bool ijkmp_is_playing(IjkMediaPlayer *mp)

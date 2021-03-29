@@ -1247,6 +1247,25 @@ static void step_to_next_frame_l(FFPlayer *ffp)
         stream_toggle_pause_l(ffp, 0);
 }
 
+static void step_to_previous_frame_l(FFPlayer *ffp)
+{
+    VideoState *is = ffp->is;
+    is->step = -1;
+    /* if the stream is paused unpause it, then step */
+    if (is->paused)
+        stream_toggle_pause_l(ffp, 0);
+}
+
+void ffp_step_to_next_frame(FFPlayer *ffp)
+{
+    step_to_next_frame_l(ffp);
+}
+
+void ffp_step_to_previous_frame(FFPlayer *ffp)
+{
+    step_to_previous_frame_l(ffp);
+}
+
 static double compute_target_delay(FFPlayer *ffp, double delay, VideoState *is)
 {
     double sync_threshold, diff = 0;

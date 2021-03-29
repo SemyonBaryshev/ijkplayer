@@ -446,6 +446,27 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
     ijkmp_stop(_mediaPlayer);
 }
 
+- (void)stepToNextFrame
+{
+    if (!_mediaPlayer)
+        return;
+    ijkmp_step_to_next_frame(_mediaPlayer);
+}
+
+- (void)stepToPreviousFrame
+{
+    if (!_mediaPlayer)
+        return;
+    ijkmp_step_to_previous_frame(_mediaPlayer);
+}
+
+- (void)rtspSendPlayCommand:(NSString *)headers
+{
+    if (!_mediaPlayer)
+        return;
+    ijkmp_rtsp_send_play_command(_mediaPlayer, [headers UTF8String]);
+}
+
 - (BOOL)isPlaying
 {
     if (!_mediaPlayer)
