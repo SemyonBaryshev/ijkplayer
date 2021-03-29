@@ -112,12 +112,23 @@ do_lipo_all () {
             mkdir -p "$UNI_INC_DIR/libffmpeg/$ARCH"
             cp -f "$ARCH_INC_DIR/libffmpeg/config.h"    "$UNI_INC_DIR/libffmpeg/$ARCH/config.h"
             cp -f tools/config.h                        "$UNI_INC_DIR/libffmpeg/config.h"
+            copy_rtsp_headers "$ARCH_INC_DIR"
         fi
     done
+    copy_rtsp_headers "$UNI_BUILD_ROOT/build/universal/include"
 
     for SSL_LIB in $SSL_LIBS
     do
         do_lipo_ssl "$SSL_LIB.a";
+    done
+}
+
+copy_rtsp_headers () {
+    FF_RTSP_HEADERS_DEST=$1
+    FF_RTSP_HEADERS="http httpauth network os_support rtp rtpdec rtsp rtspcodes srtp"
+    for FF_RTSP_HEADER in $FF_RTSP_HEADERS
+    do
+        cp -f "../extra/ffmpeg/libavformat/$FF_RTSP_HEADER.h" "$FF_RTSP_HEADERS_DEST/libavformat"
     done
 }
 
