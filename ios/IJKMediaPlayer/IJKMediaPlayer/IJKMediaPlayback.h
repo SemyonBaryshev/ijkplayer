@@ -74,6 +74,9 @@ typedef NS_ENUM(NSInteger, IJKMPMovieTimeOption) {
 - (BOOL)isPlaying;
 - (void)shutdown;
 - (void)setPauseInBackground:(BOOL)pause;
+- (void)stepToNextFrame;
+- (void)stepToPreviousFrame;
+- (void)rtspSendPlayCommand:(NSString *)headers;
 
 @property(nonatomic, readonly)  UIView *view;
 @property(nonatomic)            NSTimeInterval currentPlaybackTime;
