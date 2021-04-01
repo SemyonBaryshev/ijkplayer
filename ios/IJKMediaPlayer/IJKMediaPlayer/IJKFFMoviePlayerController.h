@@ -92,7 +92,7 @@ typedef enum IJKLogLevel {
 - (void)stop;
 - (void)stepToNextFrame;
 - (void)stepToPreviousFrame;
-- (void)rtspSendPlayCommand:(NSString *)headers;
+- (void)rtspSendPlayCommandWithHeaders:(NSString *)headers;
 - (BOOL)isPlaying;
 - (int64_t)trafficStatistic;
 - (float)dropFrameRate;

@@ -460,7 +460,7 @@ void IJKFFIOStatCompleteRegister(void (*cb)(const char *url,
     ijkmp_step_to_previous_frame(_mediaPlayer);
 }
 
-- (void)rtspSendPlayCommand:(NSString *)headers
+- (void)rtspSendPlayCommandWithHeaders:(NSString *)headers
 {
     if (!_mediaPlayer)
         return;
